@@ -142,16 +142,23 @@ class: inverse, middle, center
 
 ### 正态分布检验：`shapiro.test()`函数  
 
+- 小样本表现优越（最小可以到*n* = 3），大样本下仍有效  
+- 最常被推荐用于正态性检验的方法  
+
+.pull-left[
 ```{r highlight.output=c(5)}
 d1_ctrl <- subset(d1, group == "ctrl") # 筛选ctrl组数据  
 shapiro.test(d1_ctrl$weight) # 检验ctrl组数据是否正态分布
 ```
+]
 
+.pull-right[
 ```{r highlight.output=c(5)}
 d1_trt2 <- subset(d1, group == "trt2") # 筛选trt2组数据  
 shapiro.test(d1_trt2$weight) # 检验trt2组数据是否正态分布
 
 ```
+]
 
 - 两组*p*值均> 0.05，表明所检验数据与正态分布无显著区别，可接受正态分布假设。
 
@@ -160,12 +167,13 @@ shapiro.test(d1_trt2$weight) # 检验trt2组数据是否正态分布
 
 ---
 
-### 正态分布检验：其他可用函数 
+### 正态分布检验：`Kolmogorov-Smirnov`函数 
 
 
-- Kolmogorov-Smirnov 检验（可用于检验其他分布，功能更多）  
+- Kolmogorov-Smirnov适合用来检验一个样本是否来自任意已知分布（比如正态、对数正态、指数等），但对正态性并不特别敏感  
 
 ```{r highlight.output=5}
+ks.test(d1_ctrl$weight, "pnorm", mean = mean(d1_ctrl$weight), sd = sd(d1_ctrl$weight))
 ks.test(d1_trt2$weight, "pnorm", mean = mean(d1_trt2$weight), sd = sd(d1_trt2$weight))
 
 ```
@@ -176,6 +184,60 @@ library(tseries)
 jarque.bera.test(d1_trt2$weight)
 
 https://datasharkie.com/how-to-test-for-normality-in-r/
+
+
+---
+### 正态分布检验：`nortest::ad.test`函数 
+
+* Anderson-Darling检验：对尾部更敏感  
+```{r}
+library(nortest)   # install.packages("nortest")
+ad.test(d1_ctrl$weight)
+ad.test(d1_trt2$weight)
+```
+
+---
+### 常用正态性检验方法对比表
+
+```{r , echo=FALSE}
+# 加载 knitr 包
+library(knitr)
+
+# 构建数据框
+df_normality <- data.frame(
+  方法 = c("Shapiro-Wilk 检验", 
+           "Kolmogorov-Smirnov 检验", 
+           "Anderson-Darling 检验", 
+           "Lilliefors 检验", 
+           "Jarque-Bera 检验"),
+  原理 = c(
+    "基于排序样本值与正态期望值的相关性",
+    "样本经验分布与理论分布最大差值的检验",
+    "对尾部偏离更敏感的改进型 EDF 检验",
+    "K-S 检验在参数未知下的修正版本",
+    "基于偏度和峰度构建统计量的检验"
+  ),
+  特点 = c(
+    "精度高，对偏态和峰度敏感，广泛推荐",
+    "通用性强但对正态性不够敏感",
+    "对尾部偏差敏感，性能优于 K-S",
+    "适用于不知道均值和方差的情况",
+    "适用于大样本，计算简便"
+  ),
+  适用性 = c(
+    "小样本和中等样本，常用于正态性检验",
+    "检验样本是否服从任意理论分布，非专为正态性设计",
+    "更稳健的正态性检验方法，适合各种样本量",
+    "用于正态性检验但需配合模拟计算临界值",
+    "大样本数据、用于经济与金融领域较多"
+  ),
+  stringsAsFactors = FALSE
+)
+
+# 输出表格
+kable(df_normality, align = "l")
+```
+
 
 
 ---
@@ -238,6 +300,39 @@ fligner.test(weight ~ group, data = d1)
 
 Compare Multiple Sample Variances in R
 http://www.sthda.com/english/wiki/compare-multiple-sample-variances-in-r
+
+---
+
+### 方差齐性检验方法对比表
+
+```{r, echo=FALSE}
+knitr::kable(
+  data.frame(
+    方法 = c("Bartlett 检验", "F 检验", "Levene 检验", "Fligner-Killeen 检验"),
+    原理 = c(
+      "基于对数方差的卡方检验",
+      "方差比服从 F 分布",
+      "偏差的方差分析（使用平均数或中位数）",
+      "基于秩的非参数检验"
+    ),
+    特点 = c(
+      "对正态性敏感，效率高",
+      "仅限两组，对正态性敏感",
+      "对非正态和偏态更稳健",
+      "最稳健，适用于各种分布"
+    ),
+    适用性 = c(
+      "正态分布数据，>2组",
+      "两组正态数据",
+      "多组偏态或非正态数据",
+      "强偏态、离群值、非参数场景"
+    )
+  ),
+
+  align = "l"
+)
+```
+
 
 ---
 class: center  

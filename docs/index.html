@@ -134,12 +134,12 @@ d1[sample(1:20, 8),] # 从20行数据中随机筛选8行查看
 
 ```
 ##    weight group
-## 10   5.14  ctrl
-## 30   5.26  trt2
-## 9    5.33  ctrl
-## 29   5.80  trt2
-## 25   5.37  trt2
-## 6    4.61  ctrl
+## 2    5.58  ctrl
+## 23   5.54  trt2
+## 7    5.17  ctrl
+## 26   5.29  trt2
+## 27   4.92  trt2
+## 4    6.11  ctrl
 ## 5    4.50  ctrl
 ## 24   5.50  trt2
 ```
@@ -173,6 +173,10 @@ class: inverse, middle, center
 
 ### 正态分布检验：`shapiro.test()`函数  
 
+- 小样本表现优越（最小可以到*n* = 3），大样本下仍有效  
+- 最常被推荐用于正态性检验的方法  
+
+.pull-left[
 
 ```r
 d1_ctrl &lt;- subset(d1, group == "ctrl") # 筛选ctrl组数据  
@@ -186,7 +190,9 @@ shapiro.test(d1_ctrl$weight) # 检验ctrl组数据是否正态分布
 ## data:  d1_ctrl$weight
 *## W = 0.95668, p-value = 0.7475
 ```
+]
 
+.pull-right[
 
 ```r
 d1_trt2 &lt;- subset(d1, group == "trt2") # 筛选trt2组数据  
@@ -200,6 +206,7 @@ shapiro.test(d1_trt2$weight) # 检验trt2组数据是否正态分布
 ## data:  d1_trt2$weight
 *## W = 0.94101, p-value = 0.5643
 ```
+]
 
 - 两组*p*值均&gt; 0.05，表明所检验数据与正态分布无显著区别，可接受正态分布假设。
 
@@ -208,11 +215,24 @@ shapiro.test(d1_trt2$weight) # 检验trt2组数据是否正态分布
 
 ---
 
-### 正态分布检验：其他可用函数 
+### 正态分布检验：`Kolmogorov-Smirnov`函数 
 
 
-- Kolmogorov-Smirnov 检验（可用于检验其他分布，功能更多）  
+- Kolmogorov-Smirnov适合用来检验一个样本是否来自任意已知分布（比如正态、对数正态、指数等），但对正态性并不特别敏感  
 
+
+```r
+ks.test(d1_ctrl$weight, "pnorm", mean = mean(d1_ctrl$weight), sd = sd(d1_ctrl$weight))
+```
+
+```
+## 
+## 	Exact one-sample Kolmogorov-Smirnov test
+## 
+## data:  d1_ctrl$weight
+*## D = 0.17347, p-value = 0.8758
+## alternative hypothesis: two-sided
+```
 
 ```r
 ks.test(d1_trt2$weight, "pnorm", mean = mean(d1_trt2$weight), sd = sd(d1_trt2$weight))
@@ -233,6 +253,50 @@ library(tseries)
 jarque.bera.test(d1_trt2$weight)
 
 https://datasharkie.com/how-to-test-for-normality-in-r/
+
+
+---
+### 正态分布检验：`nortest::ad.test`函数 
+
+* Anderson-Darling检验：对尾部更敏感  
+
+```r
+library(nortest)   # install.packages("nortest")
+ad.test(d1_ctrl$weight)
+```
+
+```
+## 
+## 	Anderson-Darling normality test
+## 
+## data:  d1_ctrl$weight
+## A = 0.28286, p-value = 0.5546
+```
+
+```r
+ad.test(d1_trt2$weight)
+```
+
+```
+## 
+## 	Anderson-Darling normality test
+## 
+## data:  d1_trt2$weight
+## A = 0.30885, p-value = 0.5026
+```
+
+---
+### 常用正态性检验方法对比表
+
+
+|方法                    |原理                                 |特点                               |适用性                                         |
+|:-----------------------|:------------------------------------|:----------------------------------|:----------------------------------------------|
+|Shapiro-Wilk 检验       |基于排序样本值与正态期望值的相关性   |精度高，对偏态和峰度敏感，广泛推荐 |小样本和中等样本，常用于正态性检验             |
+|Kolmogorov-Smirnov 检验 |样本经验分布与理论分布最大差值的检验 |通用性强但对正态性不够敏感         |检验样本是否服从任意理论分布，非专为正态性设计 |
+|Anderson-Darling 检验   |对尾部偏离更敏感的改进型 EDF 检验    |对尾部偏差敏感，性能优于 K-S       |更稳健的正态性检验方法，适合各种样本量         |
+|Lilliefors 检验         |K-S 检验在参数未知下的修正版本       |适用于不知道均值和方差的情况       |用于正态性检验但需配合模拟计算临界值           |
+|Jarque-Bera 检验        |基于偏度和峰度构建统计量的检验       |适用于大样本，计算简便             |大样本数据、用于经济与金融领域较多             |
+
 
 
 ---
@@ -335,6 +399,19 @@ fligner.test(weight ~ group, data = d1)
 
 Compare Multiple Sample Variances in R
 http://www.sthda.com/english/wiki/compare-multiple-sample-variances-in-r
+
+---
+
+### 方差齐性检验方法对比表
+
+
+|方法                 |原理                                 |特点                   |适用性                     |
+|:--------------------|:------------------------------------|:----------------------|:--------------------------|
+|Bartlett 检验        |基于对数方差的卡方检验               |对正态性敏感，效率高   |正态分布数据，&gt;2组         |
+|F 检验               |方差比服从 F 分布                    |仅限两组，对正态性敏感 |两组正态数据               |
+|Levene 检验          |偏差的方差分析（使用平均数或中位数） |对非正态和偏态更稳健   |多组偏态或非正态数据       |
+|Fligner-Killeen 检验 |基于秩的非参数检验                   |最稳健，适用于各种分布 |强偏态、离群值、非参数场景 |
+
 
 ---
 class: center  
@@ -825,11 +902,11 @@ yuenbt(wt ~ grp, data = d3, tr = 0.2, nboot = 2000) #yuen的bootstrap版本
 ## Call:
 ## yuenbt(formula = wt ~ grp, data = d3, tr = 0.2, nboot = 2000)
 ## 
-*## Test statistic: 2.0522 (df = NA), p-value = 0.03
+*## Test statistic: 2.0522 (df = NA), p-value = 0.02
 ## 
 ## Trimmed mean difference:  13.95714 
 ## 95 percent confidence interval:
-## 2.2464     25.6679
+## 2.5068     25.4075
 ```
 
 * bootstrap：自展法、自举法、自助法、靴带法、拔靴法、靴襻法
@@ -856,9 +933,9 @@ pb2gen(wt ~ grp, data = d3, est = "mom", nboot = 2000)
 ## Call:
 ## pb2gen(formula = wt ~ grp, data = d3, est = "mom", nboot = 2000)
 ## 
-*## Test statistic: 14.3375, p-value = 0.075
+*## Test statistic: 14.3375, p-value = 0.083
 ## 95% confidence interval:
-## -0.5971    28.6125
+## -0.9275    26.9333
 ```
 
 ---
